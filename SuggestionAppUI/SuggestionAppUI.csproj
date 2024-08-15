@@ -24,7 +24,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <_ContentIncludedByDefault Remove="Pages\AdminApproval.razor" />
     <_ContentIncludedByDefault Remove="Pages\Details.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <UpToDateCheckInput Remove="Pages\AdminApproval.razor" />
   </ItemGroup>
 
 </Project>
