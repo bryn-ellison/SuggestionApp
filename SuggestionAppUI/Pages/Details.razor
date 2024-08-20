@@ -1,53 +1,67 @@
 ﻿@page "/Details/{Id}"
 @inject AuthenticationStateProvider authProvider
 @inject IUserData userData
+@inject IStatusData statusData
 @inject ISuggestionData suggestionData
 @inject NavigationManager navManager
 
-<h1>Suggestion Details</h1>
+<h1 class="page-heading text-uppercase mb-4">Suggestion Details</h1>
 
-<div>
-    <div>
+<div class="row justify-content-center detail-form">
+    <div class="col-xl-8 col-lg-10 form-layout">
         @if (suggestion is not null)
         {
-            <div>
-                <div>
-                    <div @onclick="VoteUp">
-                        <div>@GetUpvoteTopText()</div>
-                        <span class="oi oi-caret-top"></span>
-                        <div>@GetUpvoteBottomText()</div>
-                    </div>
+            <div class="row suggestion-detail-row">
+                <div class="col-11 suggestion-detail">
                     <div>
-                        <div>
-                            @suggestion.DateCreated.ToString("MM.dd.yyyy")
+                        <div class="@GetVoteClass()" @onclick="VoteUp">
+                            <div class="text-uppercase">@GetUpvoteTopText()</div>
+                            <span class="oi oi-caret-top detail-upvote"></span>
+                            <div class="text-uppercase">@GetUpvoteBottomText()</div>
+                        </div>
+                        <div class="suggestion-detail-date">
+                            <div>
+                                @suggestion.DateCreated.ToString("MM.dd.yyyy")
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <div>@suggestion.Suggestion</div>
-                        <div>@suggestion.Author.DisplayName</div>
-                        <div>@suggestion.Description</div>
-                        <div>@suggestion.Category.CategoryName</div>
+                    <div class="suggestion-detail-text">
+                        <div class="fw-bold mb-2 suggestion-detail-suggestion">@suggestion.Suggestion</div>
+                        <div class="mb-2 suggestion-detail-author">@suggestion.Author.DisplayName</div>
+                        <div class="mb-2 d-none d-md-block">@suggestion.Description</div>
+                        <div class="suggestion-entry-text-category d-none d-md-block">@suggestion.Category.CategoryName</div>
                     </div>
                 </div>
-                <div>
-                    <button @onclick="ClosePage"></button>
+                <div class="col-1 close-button-section">
+                    <button class="btn btn-close" @onclick="ClosePage"></button>
                 </div>
             </div>
+            <div class="row d-block d-md-none">
+                <div class="suggestion-detail-text">
+                    <div>
+                        @suggestion.Description
+                    </div>
+                    <div class="suggestion-entry-text-category">
+                        @suggestion.Category.CategoryName
+                    </div>
+                </div>
+            </div>
+
         }
     </div>
 </div>
 
 @if (suggestion?.SuggestionStatus is not null)
 {
-    <div>
-        <div>
-            <div>
+    <div class="row justify-content-center detail-form">
+        <div class="col-xl-8 col-lg-10 suggestion-results form-layout">
+            <div class="@GetStatusClass()">
             </div>
-            <div>
-                <div>
+            <div class="suggestion-detail-status-section">
+                <div class="suggestiondetail-status fw-bold mb-2 suggestion-detail-suggestion">
                     @suggestion.SuggestionStatus.StatusName
                 </div>
-                <div>
+                <div class="suggestion-detail-owner-notes">
                     @((MarkupString)suggestion.OwnerNotes)
                 </div>
             </div>
@@ -55,77 +69,59 @@
     </div>
 }
 
-
-@code {
-
-    [Parameter]
-    public string Id { get; set; }
-
-    private SuggestionModel suggestion;
-    private UserModel loggedInUser;
-
-    protected async override Task OnInitializedAsync()
-    {
-        suggestion = await suggestionData.GetSuggestion(Id);
-        loggedInUser = await authProvider.GetUserFromAuth(userData);
-    }
-
-    private void ClosePage()
-    {
-        navManager.NavigateTo("/");
-    }
-
-    private string GetUpvoteTopText()
-    {
-        if (suggestion.UserVotes?.Count > 0)
-        {
-            return suggestion.UserVotes.Count.ToString("00");
-        }
-        else
-        {
-            if (suggestion.Author.Id == loggedInUser?.Id)
-            {
-                return "Awaiting";
-            }
-            else
-            {
-                return "Click To";
-            }
-        }
-    }
-
-    private string GetUpvoteBottomText()
-    {
-        if (suggestion.UserVotes?.Count > 1)
-        {
-            return "Upvotes";
-        }
-        else
-        {
-            return "Upvote";
-        }
-    }
-
-    private async Task VoteUp()
-    {
-        if (loggedInUser is not null)
-        {
-            if (suggestion.Author.Id == loggedInUser.Id)
-            {
-                // Can't vote on own suggestion
-                return;
-            }
-
-            if (suggestion.UserVotes.Add(loggedInUser.Id) == false)
-            {
-                suggestion.UserVotes.Remove(loggedInUser.Id);
-            }
-
-            await suggestionData.UpvoteSuggestion(suggestion.Id, loggedInUser.Id);
-        }
-        else
-        {
-            navManager.NavigateTo("/MicroSoftIdentity/Account/SignIn", true);
-        }
-    }
+@if (suggestion is not null)
+{
+    <AuthorizeView Policy="Admin">
+        <div class="row justify-content-center detail-form">
+            <div class="col-xl-8 col-lg-10 form-layout admin-details">
+                <div>
+                    <div class="suggestion-detail-status fw-bold mb-2 suggestion-detail-suggestion">
+                        Set Status
+                    </div>
+                    @if (string.IsNullOrWhiteSpace(settingStatus))
+                    {
+                        <div class="admin-set-statuses">
+                            <button @onclick="@(() => settingStatus = "completed")" class="btn-suggestion-entry-text-category btn-archive btn-status-completed">
+                                completed
+                            </button>
+                            <button @onclick="@(() => settingStatus = "watching")" class="btn-suggestion-entry-text-category btn-archive btn-status-watching">
+                                watching
+                            </button>
+                            <button @onclick="@(() => settingStatus = "upcoming")" class="btn-suggestion-entry-text-category btn-archive btn-status-upcoming">
+                                upcoming
+                            </button>
+                            <button @onclick="@(() => settingStatus = "dismissed")" class="btn-suggestion-entry-text-category btn-archive btn-status-dismissed">
+                                dismissed
+                            </button>
+                        </div>
+                    }
+                    else if (settingStatus == "completed")
+                    {
+                        <div>
+                            <input @bind="urlText" class="form-control rounded-control" type="text" placeholder="Url" aria-label="Content Url"/>
+                        </div>
+                        <div class="suggestion-entry-bottom">
+                            <button class="btn btn-archive-confirm" @onclick="CompleteSetStatus">
+                                confirm
+                            </button>
+                            <button class="btn btn-archive-reject" @onclick="(() => settingStatus = null)">
+                                cancel
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="suggestion-entry-bottom">
+                            <button class="btn btn-archive-confirm" @onclick="CompleteSetStatus">
+                                confirm
+                            </button>
+                            <button class="btn btn-archive-reject" @onclick="(() => settingStatus = null)">
+                                cancel
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </AuthorizeView>
 }
